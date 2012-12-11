@@ -20,14 +20,13 @@ import scipy
 from scipy import fft
 import tables
 from tables import IsDescription, Float32Col, openFile
-
+'''
 from PyDAQmx import *
 from PyDAQmx.DAQmxConstants import *
 from PyDAQmx.DAQmxTypes import *
 import gpib
-import visa
 from visa import instrument
-
+'''
 # ------------------------------
 # IQ_data TABLES/HDF5
 # ------------------------------
@@ -38,7 +37,6 @@ class IQ_data(tables.IsDescription):
     Q_med   = Float32Col()
     Q_std   = Float32Col()
 
-os.system("rm iq_data.h5")
 h5file = openFile("iq_data.h5", mode="w", title="IQ Data")
 group = h5file.createGroup(h5file.root, "syn_test", "Synthesizer Test")
 table = h5file.createTable(group, "IQ readout", IQ_data, "Syn Readout")
@@ -51,9 +49,10 @@ def getDAQdata():
     ''' Talks to DAQ instrument to read in data points. Returns the data from the
     2 channels.
     '''
+    '''
     analog_input = Task()
     read = int32()
-    data = np.zeros((20000,), dtype=numpy.float64)
+    data = np.zeros((20000,), dtype=np.float64)
     # DAQmx configure code
     analog_input.CreateAIVoltageChan("Dev1/ai0:1", "", DAQmx_Val_Cfg_Default,
         -1., 1., DAQmx_Val_Volts, None)
@@ -66,16 +65,20 @@ def getDAQdata():
         20000, byref(read), None)
     # data[:10000] gives the 1st channel, data[1000:] gives 2nd channel
     return data
+    '''
 
 def set_Syn(giga_freq, power):
     ''' Sets the frequency and power of the connected synthesizer.
     giga_freq=frequency in units GHz, power=power in units dBm '''
+    '''
     syn = instrument("GPIB0::15")
     syn.write("*IDN?")
     # set frequency (GHz)
     gpib.SynSetFreq(syn, giga_freq)
     # set power (dBm)
     gpib.SynSetPower(syn, power)
+    '''
+    pass
     
 def do_freq_sweep(center_freq, freq_span, n_pts, power):
     ''' Return a 2D array of dimension (n_pts, 4) of the DAQ data.
@@ -90,6 +93,7 @@ def do_freq_sweep(center_freq, freq_span, n_pts, power):
     
     Currently, this involves keeping Syn 1 @ const. freq, while sweeping Syn 2.
     Syn 1 freq will have be set manually at this moment.
+    '''
     '''
     lowest_freq = center_freq - (freq_span * 10**-6) / 2
     highest_freq = center_freq + (freq_span * 10**-6) / 2
@@ -119,6 +123,8 @@ def do_freq_sweep(center_freq, freq_span, n_pts, power):
     table.flush()
     
     return arr
+    '''
+    pass
 
 # ------------------------------
 # GUI
@@ -136,15 +142,24 @@ class AppForm(QMainWindow):
         # 8x6 inches, 100 dpi
         self.fig1 = Figure((6.0,6.0), dpi=100)
         self.axes1 = self.fig1.add_subplot(111)
+        self.axes1.set_title('I vs Q resonance curve')
 
         fig2, (axes2_1, axes2_2) = plt.subplots(2,1, sharex=True)
         fig2.subplots_adjust(hspace=0)
+        axes2_1.set_title('IQ')
+        axes2_1.set_ylabel('Amplitude')
+        axes2_2.set_ylabel('Amplitude')
+        axes2_2.set_xlabel('Time')
         self.fig2 = fig2
         self.axes2_1 = axes2_1
         self.axes2_2 = axes2_2
 
         fig3, (axes3_1, axes3_2) = plt.subplots(2,1, sharex=True)
         fig3.subplots_adjust(hspace=0)
+        axes3_1.set_title('IQ FFT/PSD')
+        axes3_1.set_ylabel('Spectrum')
+        axes3_2.set_ylabel('Spectrum')
+        axes3_2.set_xlabel('Frequency')
         self.fig3 = fig3
         self.axes3_1 = axes3_1
         self.axes3_2 = axes3_2
@@ -210,6 +225,7 @@ class AppForm(QMainWindow):
     def on_sweep(self):
         ''' Clear previous and draw new IQ data. Triggers when Sweep button is pushed.
             Performs do_freq_sweep'''
+        '''
         center_freq = float(self.center_freq_txtbx.text())
         freq_span = float(self.freq_span_txtbx.text())
         n_pts = int(self.n_pts_txtbx.text())
@@ -222,11 +238,14 @@ class AppForm(QMainWindow):
         self.axes1.clear()
         self.axes1.scatter(I_meds, Q_meds)
         self.canvas1.draw()
+        '''
+        pass
 
     def on_draw(self):
         ''' Clear previous and draw new resonance data. Triggers when Draw button
             is pushed. For now, on_draw will use the center frequency, not the
             "resonance" frequency. '''
+        '''
         res_freq = float(self.center_freq_txtbx.text())
         power = float(self.power2_txtbx.text())
         set_Syn(res_freq, power)
@@ -243,6 +262,8 @@ class AppForm(QMainWindow):
         self.axes3_1.plot(fft(I_trace))
         self.axes3_2.plot(fft(Q_trace))
         self.canvas3.draw()
+        '''
+        pass
         
         
 

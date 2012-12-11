@@ -10,11 +10,14 @@ from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 
 import matplotlib
+from matplotlib import pyplot as plt
 from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QTAgg as NavigationToolbar
 from matplotlib.figure import Figure
 
 import numpy as np
+import scipy
+from scipy import fft
 import tables
 from tables import IsDescription, Float32Col, openFile
 
@@ -131,12 +134,32 @@ class AppForm(QMainWindow):
         self.main_frame = QWidget()
         # Create the mpl Figure and FigCanvas objects.
         # 8x6 inches, 100 dpi
-        self.fig = Figure((8.0,8.0), dpi=100)
-        self.axes = self.fig.add_subplot(111)
-        self.canvas = FigureCanvas(self.fig)
-        self.canvas.setParent(self.main_frame)
+        self.fig1 = Figure((6.0,6.0), dpi=100)
+        self.axes1 = self.fig1.add_subplot(111)
+
+        fig2, (axes2_1, axes2_2) = plt.subplots(2,1, sharex=True)
+        fig2.subplots_adjust(hspace=0)
+        self.fig2 = fig2
+        self.axes2_1 = axes2_1
+        self.axes2_2 = axes2_2
+
+        fig3, (axes3_1, axes3_2) = plt.subplots(2,1, sharex=True)
+        fig3.subplots_adjust(hspace=0)
+        self.fig3 = fig3
+        self.axes3_1 = axes3_1
+        self.axes3_2 = axes3_2
+        
+        self.canvas1 = FigureCanvas(self.fig1)
+        self.canvas2 = FigureCanvas(self.fig2)
+        self.canvas3 = FigureCanvas(self.fig3)
+        self.canvas1.setParent(self.main_frame)
+        self.canvas2.setParent(self.main_frame)
+        self.canvas3.setParent(self.main_frame)
+        ## The following toolbars are completely optional.
         # Create the mpl navi toolbar, tied to the canvas
-        self.mpl_toolbar = NavigationToolbar(self.canvas, self.main_frame)
+        self.mpl_toolbar1 = NavigationToolbar(self.canvas1, self.main_frame)
+        self.mpl_toolbar2 = NavigationToolbar(self.canvas2, self.main_frame)
+        self.mpl_toolbar3 = NavigationToolbar(self.canvas3, self.main_frame)
         # Create all input parameter textboxes
         self.center_freq_txtbx = QLineEdit('1.0') # default 1.0GHz
         self.freq_span_txtbx = QLineEdit('50.0') # default 50kHz
@@ -152,32 +175,39 @@ class AppForm(QMainWindow):
         self.power2_lbl = QLabel('Syn 2 Power (dBm)')
         # Create the button(s)
         self.sweep_btn = QPushButton("Sweep Save Data")
+        self.draw_btn = QPushButton("Resonance Draw")
         # Create layout
         vbox_main = QVBoxLayout() 
         hbox1 = QHBoxLayout()
+        hbox2 = QHBoxLayout()
         vbox1 = QVBoxLayout()
         vbox2 = QVBoxLayout()
         # widget_lst order matters
         vbox1_w_lst = [ self.center_freq_lbl, self.center_freq_txtbx, self.freq_span_lbl,
             self.freq_span_txtbx, self.n_pts_lbl, self.n_pts_txtbx ]
         vbox2_w_lst = [ self.power1_lbl, self.power1_txtbx, self.power2_lbl,
-            self.power2_txtbx, self.sweep_btn ]
+            self.power2_txtbx, self.sweep_btn, self.draw_btn ]
         for w in vbox1_w_lst:
             vbox1.addWidget(w)
         for w in vbox2_w_lst:
             vbox2.addWidget(w)
-        hbox1.addLayout(vbox1)
-        hbox1.addLayout(vbox2)
-        vbox_main.addWidget(self.canvas)
-        vbox_main.addWidget(self.mpl_toolbar)
+        hbox1_w_lst = [self.canvas1, self.canvas2, self.canvas3]
+        for w in hbox1_w_lst:
+            hbox1.addWidget(w)
+        hbox2.addLayout(vbox1)
+        hbox2.addLayout(vbox2)
+        #vbox_main.addWidget(self.canvas)
+        #vbox_main.addWidget(self.mpl_toolbar)
         vbox_main.addLayout(hbox1)
+        vbox_main.addLayout(hbox2)
         self.main_frame.setLayout(vbox_main)
         self.setCentralWidget(self.main_frame)
         
         # Event connections/signals
-        self.connect(self.sweep_btn, SIGNAL("clicked()"), self.on_draw)
+        self.connect(self.sweep_btn, SIGNAL("clicked()"), self.on_sweep)
+        self.connect(self.draw_btn, SIGNAL("clicked()"), self.on_draw)
 
-    def on_draw(self):
+    def on_sweep(self):
         ''' Clear previous and draw new IQ data. Triggers when Sweep button is pushed.
             Performs do_freq_sweep'''
         center_freq = float(self.center_freq_txtbx.text())
@@ -189,9 +219,32 @@ class AppForm(QMainWindow):
         I_meds = IQ_data[:, 1]
         Q_meds = IQ_data[:, 3]
         
-        self.axes.clear()
-        self.axes.scatter(I_meds, Q_meds)
-        self.canvas.draw()
+        self.axes1.clear()
+        self.axes1.scatter(I_meds, Q_meds)
+        self.canvas1.draw()
+
+    def on_draw(self):
+        ''' Clear previous and draw new resonance data. Triggers when Draw button
+            is pushed. For now, on_draw will use the center frequency, not the
+            "resonance" frequency. '''
+        res_freq = float(self.center_freq_txtbx.text())
+        power = float(self.power2_txtbx.text())
+        set_Syn(res_freq, power)
+        trace = getDAQdata()
+        I_trace = trace[:10000]
+        Q_trace = trace[10000:]
+        self.axes2_1.clear()
+        self.axes2_2.clear()
+        self.axes2_1.plot(I_trace)
+        self.axes2_2.plot(Q_trace)
+        self.canvas2.draw()
+        self.axes3_1.clear()
+        self.axes3_2.clear()
+        self.axes3_1.plot(fft(I_trace))
+        self.axes3_2.plot(fft(Q_trace))
+        self.canvas3.draw()
+        
+        
 
 
 # ------------------------------

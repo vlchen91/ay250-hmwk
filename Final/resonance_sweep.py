@@ -38,7 +38,6 @@ class IQ_data(tables.IsDescription):
     Q_med   = Float32Col()
     Q_std   = Float32Col()
 
-os.system("rm iq_data.h5")
 h5file = openFile("iq_data.h5", mode="w", title="IQ Data")
 group = h5file.createGroup(h5file.root, "syn_test", "Synthesizer Test")
 table = h5file.createTable(group, "IQ readout", IQ_data, "Syn Readout")
